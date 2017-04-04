@@ -22,21 +22,20 @@ var YAJB = function(){
 	window.YAJB_INSTANCE = this 
 }
 
-YAJB.prototype._emit = function(option){
-
-	var opt = JSON.parse(option)
-	// trigger event
-    //this.messageQueue.push(opt)  
-    this.checkQueue(opt);
-	// this.events[option.name].apply({}, option.data)
-}
-
 YAJB.prototype.isMobile = function() {
 	if (window.javaInterface || window.YAJB_INJECT) {
 		return true
 	}else {
 		return false
 	}
+}
+
+YAJB.prototype._emit = function(option){
+	var opt = JSON.parse(option)
+	// trigger event
+    //this.messageQueue.push(opt)  
+    this.checkQueue(opt);
+	// this.events[option.name].apply({}, option.data)
 }
 
 YAJB.prototype._send = function(option) {
@@ -49,13 +48,8 @@ YAJB.prototype._send = function(option) {
 }
 
 YAJB.prototype.checkQueue = function(option){
-	// this.eventQueue.forEach(function(item){
-	// 	if(item.id === option.id){
-	// 		item.callback(option.data)
-	// 	}
-	// })
 	var event = this.eventQueue.find(function(item){
-		return item.id === option.id
+		return item.id == option.id
 	})
 	event.callback(option.data)
 }
@@ -79,8 +73,29 @@ YAJB.prototype.send = function(event, data) {
 				resolve(value)
 			}
 		})
-		that._send({event:event,id:that.counter,data:data});
+		that._send({event:event,id:that.counter,data:JSON.stringify(data)});
 		that.counter++
+	})
+}
+
+YAJB.prototype.register = function(event,fn){
+	this.eventQueue.push({
+		event: event,
+		callback: fn
+	})
+}
+
+
+YAJB.prototype._trigger = function(option){
+	var opt = JSON.parse(option)
+	var event = this.eventQueue.find(function(item){
+		return item.event === opt.event
+	})
+	var that = this
+	event.id = opt.id
+	event.callback(opt.data,function(result){
+		var op = {event: opt.event + 'Resolved',data:result,id:opt.id};
+		that._send(op);
 	})
 }
 

@@ -5,8 +5,8 @@
 }(this, (function () { 'use strict';
 
 var YAJB = function(){
-	this.messageQueue= [];
 	this.eventQueue = [];
+	this.counter = 1;
 	var options;
 	this.isAndroid = false;
 	this.isiOS = false;
@@ -26,15 +26,6 @@ var YAJB = function(){
 	window.YAJB_INSTANCE = this; 
 };
 
-YAJB.prototype._emit = function(option){
-
-	var opt = JSON.parse(option);
-	// trigger event
-    //this.messageQueue.push(opt)  
-    this.checkQueue(opt);
-	// this.events[option.name].apply({}, option.data)
-};
-
 YAJB.prototype.isMobile = function() {
 	if (window.javaInterface || window.YAJB_INJECT) {
 		return true
@@ -43,20 +34,28 @@ YAJB.prototype.isMobile = function() {
 	}
 };
 
+YAJB.prototype._emit = function(option){
+	var opt = JSON.parse(option);
+	// trigger event
+    //this.messageQueue.push(opt)  
+    this.checkQueue(opt);
+	// this.events[option.name].apply({}, option.data)
+};
+
 YAJB.prototype._send = function(option) {
 	if (this.isAndroid) {
-		window.alert(JSON.stringify(option));
+		// window.alert(JSON.stringify(option))
+		window.location = "hybrid://" + option.event + ':' + option.id + '/'+ option.data;
 	}else if (this.isiOS) {
 		// window.postMessage
 	}
 };
 
 YAJB.prototype.checkQueue = function(option){
-	this.eventQueue.forEach(function(item){
-		if(item.event === option.event){
-			item.callback(option.data);
-		}
+	var event = this.eventQueue.find(function(item){
+		return item.id == option.id
 	});
+	event.callback(option.data);
 };
 
 // YAJB.prototype.on = function(event, callback) {
@@ -72,14 +71,36 @@ YAJB.prototype.send = function(event, data) {
 	return new Promise(function(resolve, reject){
 		that.eventQueue.push({
 			event: event + "Resolved",
+			id : that.counter,
 			callback: function(value){
 				console.log("resolve");
 				resolve(value);
 			}
 		});
-		that._send({event:event, data:data});
+		that._send({event:event,id:that.counter,data:JSON.stringify(data)});
+		that.counter++;
 	})
-	// that._send({event:event,data:data})
+};
+
+YAJB.prototype.register = function(event,fn){
+	this.eventQueue.push({
+		event: event,
+		callback: fn
+	});
+};
+
+
+YAJB.prototype._trigger = function(option){
+	var opt = JSON.parse(option);
+	var event = this.eventQueue.find(function(item){
+		return item.event === opt.event
+	});
+	var that = this;
+	event.id = opt.id;
+	event.callback(opt.data,function(result){
+		var op = {event: opt.event + 'Resolved',data:result,id:opt.id};
+		that._send(op);
+	});
 };
 
 return YAJB;
